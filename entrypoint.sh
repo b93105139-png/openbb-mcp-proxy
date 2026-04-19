@@ -4,8 +4,8 @@ set -e
 CONFIG_DIR="/root/.openbb_platform"
 mkdir -p "$CONFIG_DIR"
 
-if [ -z "${MCP_AUTH_PASSWORD}" ]; then
-  echo "ERROR: MCP_AUTH_PASSWORD is required" >&2
+if [ -z "${OPENBB_BEARER_TOKEN}" ]; then
+  echo "ERROR: OPENBB_BEARER_TOKEN is required" >&2
   exit 1
 fi
 
@@ -19,6 +19,13 @@ cat > "$CONFIG_DIR/user_settings.json" <<EOF
 }
 EOF
 
-export OPENBB_MCP_SERVER_AUTH="[\"${MCP_AUTH_USER:-jesse}\", \"${MCP_AUTH_PASSWORD}\"]"
+openbb-mcp --host 127.0.0.1 --port 8002 --transport streamable-http &
+UPSTREAM_PID=$!
 
-exec openbb-mcp --host 0.0.0.0 --port 8001 --transport streamable-http
+trap "kill $UPSTREAM_PID 2>/dev/null" EXIT INT TERM
+
+export OPENBB_UPSTREAM="http://127.0.0.1:8002"
+export HOST=0.0.0.0
+export PORT=8001
+
+exec python /app/proxy.py

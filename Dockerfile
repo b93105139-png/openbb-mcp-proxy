@@ -10,8 +10,12 @@ RUN pip install --no-cache-dir \
     openbb \
     openbb-mcp-server \
     openbb-polygon \
-    openbb-alpha-vantage
+    openbb-alpha-vantage \
+    starlette \
+    uvicorn \
+    httpx
 
+COPY proxy.py /app/proxy.py
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
