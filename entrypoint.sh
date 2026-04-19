@@ -19,13 +19,6 @@ cat > "$CONFIG_DIR/user_settings.json" <<EOF
 }
 EOF
 
-cat > "$CONFIG_DIR/mcp_settings.json" <<EOF
-{
-  "transport": "streamable-http",
-  "host": "0.0.0.0",
-  "port": 8001,
-  "server_auth": ["${MCP_AUTH_USER:-jesse}", "${MCP_AUTH_PASSWORD}"]
-}
-EOF
+export OPENBB_MCP_SERVER_AUTH="[\"${MCP_AUTH_USER:-jesse}\", \"${MCP_AUTH_PASSWORD}\"]"
 
-exec openbb-mcp
+exec openbb-mcp --host 0.0.0.0 --port 8001 --transport streamable-http
