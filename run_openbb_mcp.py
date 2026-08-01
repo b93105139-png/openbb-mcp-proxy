@@ -37,23 +37,51 @@ once FRED stops hanging them.
 
 import sys
 
-import openbb_core.provider.utils.client as _client
 
-_orig_request = _client.ClientSession.request
+def _apply_fred_ua_patch() -> str:
+    """Override the User-Agent for stlouisfed.org. Returns a status line for the log.
+
+    Deliberately swallows every failure. This patch reaches into openbb-core
+    internals, which are not a public API and do move between releases. If it stops
+    applying we want to lose the FRED provider, not the whole MCP server -- the
+    other ~200 tools have nothing to do with FRED.
+    """
+    try:
+        import openbb_core.provider.utils.client as client
+    except Exception as exc:  # module moved or renamed upstream
+        return f"NOT APPLIED - cannot import openbb_core client ({exc!r})"
+
+    try:
+        orig_request = client.ClientSession.request
+    except AttributeError as exc:
+        return f"NOT APPLIED - ClientSession.request missing ({exc!r})"
+
+    async def request(self, *args, **kwargs):
+        url = args[1] if len(args) > 1 else kwargs.get("url", "")
+        if "stlouisfed.org" in str(url):
+            headers = dict(kwargs.get("headers") or {})
+            headers.setdefault("Accept", "application/json")
+            headers["User-Agent"] = "curl/8.5.0"
+            kwargs["headers"] = headers
+        return await orig_request(self, *args, **kwargs)
+
+    try:
+        client.ClientSession.request = request
+    except Exception as exc:
+        return f"NOT APPLIED - could not patch ClientSession.request ({exc!r})"
+
+    return "applied"
 
 
-async def _request(self, *args, **kwargs):
-    """Force a benign User-Agent on FRED requests; pass everything else through."""
-    url = args[1] if len(args) > 1 else kwargs.get("url", "")
-    if "stlouisfed.org" in str(url):
-        headers = dict(kwargs.get("headers") or {})
-        headers.setdefault("Accept", "application/json")
-        headers["User-Agent"] = "curl/8.5.0"
-        kwargs["headers"] = headers
-    return await _orig_request(self, *args, **kwargs)
-
-
-_client.ClientSession.request = _request
+_status = _apply_fred_ua_patch()
+print(f"[fred-ua-patch] {_status}", flush=True)
+if _status != "applied":
+    print(
+        "[fred-ua-patch] provider='fred' calls will hang and surface as "
+        "\"HTTP 400 {'detail': ''}\". Use provider='federal_reserve' meanwhile, and "
+        "check whether openbb-core moved openbb_core.provider.utils.client.",
+        flush=True,
+    )
 
 from openbb_mcp_server.app.app import main  # noqa: E402  (must follow the patch)
 
