@@ -19,7 +19,9 @@ cat > "$CONFIG_DIR/user_settings.json" <<EOF
 }
 EOF
 
-openbb-mcp --host 127.0.0.1 --port 8002 --transport streamable-http &
+# Wrapper instead of the plain `openbb-mcp` console script: it applies the FRED
+# User-Agent workaround before starting the server. See run_openbb_mcp.py.
+python /app/run_openbb_mcp.py --host 127.0.0.1 --port 8002 --transport streamable-http &
 UPSTREAM_PID=$!
 
 trap "kill $UPSTREAM_PID 2>/dev/null" EXIT INT TERM

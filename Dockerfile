@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir \
     httpx
 
 COPY proxy.py /app/proxy.py
+COPY run_openbb_mcp.py /app/run_openbb_mcp.py
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
